@@ -45,7 +45,17 @@ def do_train(args, model, train_dataloader, save_dir="./out"):
     # You can use progress_bar.update(1) to see the progress during training
     # You can refer to the pytorch tutorial covered in class for reference
 
-    raise NotImplementedError
+    for _ in range(num_epochs):
+        for batch in train_dataloader:
+            batch = {key: value.to(device) for key, value in batch.items()}
+            optimizer.zero_grad()
+            loss = model(**batch).loss
+            loss.backward()
+            optimizer.step()
+            lr_scheduler.step()
+            progress_bar.update(1)
+
+    progress_bar.close()
 
     ##### YOUR CODE ENDS HERE ######
 
@@ -93,7 +103,14 @@ def create_augmented_dataloader(args, dataset):
     # dataloader will be for the original training split augmented with 5k random transformed examples from the training set.
     # You may find it helpful to see how the dataloader was created at other place in this code.
 
-    raise NotImplementedError
+    original = dataset["train"]
+    sampled = original.shuffle(seed=42).select(range(5000))
+    transformed = sampled.map(custom_transform, load_from_cache_file=False)
+    combined = datasets.concatenate_datasets([original, transformed])
+    tokenized = combined.map(tokenize_function, batched=True)
+    tokenized = tokenized.remove_columns(["text"]).rename_column("label", "labels")
+    tokenized.set_format("torch")
+    train_dataloader = DataLoader(tokenized, shuffle=True, batch_size=args.batch_size)
 
     ##### YOUR CODE ENDS HERE ######
 

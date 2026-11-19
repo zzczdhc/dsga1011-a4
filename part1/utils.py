@@ -10,6 +10,7 @@ from tqdm.auto import tqdm
 import evaluate
 import random
 import argparse
+import re
 from nltk.corpus import wordnet
 from nltk import word_tokenize
 from nltk.tokenize.treebank import TreebankWordDetokenizer
@@ -44,7 +45,22 @@ def custom_transform(example):
 
     # You should update example["text"] using your transformation
 
-    raise NotImplementedError
+    text = example["text"]
+    rng = random.Random(text)
+
+    def introduce_typo(match):
+        word = match.group()
+        if not word.isalpha() or rng.random() >= 0.35:
+            return word
+
+        positions = [i for i in range(1, len(word) - 2) if word[i] != word[i + 1]]
+        if not positions:
+            return word
+
+        i = rng.choice(positions)
+        return word[:i] + word[i + 1] + word[i] + word[i + 2:]
+
+    example["text"] = re.sub(r"<[^>]*>|https?://\S+|\b[A-Za-z]{5,}\b", introduce_typo, text)
 
     ##### YOUR CODE ENDS HERE ######
 

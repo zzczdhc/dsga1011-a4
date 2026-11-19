@@ -7,6 +7,8 @@ from transformers import T5ForConditionalGeneration, T5Config
 from transformers.pytorch_utils import ALL_LAYERNORM_LAYERS
 import wandb
 
+from load_data import T5_CHECKPOINT
+
 DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 def setup_wandb(args):
@@ -20,7 +22,16 @@ def initialize_model(args):
     or training a T5 model initialized with the 'google-t5/t5-small' config
     from scratch.
     '''
-    pass
+    if args.finetune:
+        model = T5ForConditionalGeneration.from_pretrained(T5_CHECKPOINT)
+    else:
+        model = T5ForConditionalGeneration(T5Config.from_pretrained(T5_CHECKPOINT))
+    return model.to(DEVICE)
+
+
+def checkpoint_directory(args):
+    model_type = 'ft' if args.finetune else 'scr'
+    return os.path.join('checkpoints', f'{model_type}_experiments', args.experiment_name)
 
 def mkdir(dirpath):
     if not os.path.exists(dirpath):
@@ -30,12 +41,11 @@ def mkdir(dirpath):
             pass
 
 def save_model(checkpoint_dir, model, best):
-    # Save model checkpoint to be able to load the model later
-    pass
+    model.save_pretrained(os.path.join(checkpoint_dir, 'best' if best else 'last'))
 
 def load_model_from_checkpoint(args, best):
-    # Load model from a checkpoint
-    pass
+    path = os.path.join(checkpoint_directory(args), 'best' if best else 'last')
+    return T5ForConditionalGeneration.from_pretrained(path).to(DEVICE)
 
 def initialize_optimizer_and_scheduler(args, model, epoch_length):
     optimizer = initialize_optimizer(args, model)
